@@ -1,0 +1,5 @@
+[Unit]
+Description=Ghost persistent MySQL data
+
+[Volume]
+VolumeName=ghost-db
