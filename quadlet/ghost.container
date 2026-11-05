@@ -1,0 +1,48 @@
+[Unit]
+Description=Ghost blog
+Wants=ghost-db.service
+After=ghost-db.service
+StartLimitIntervalSec=0
+
+[Container]
+# Back up the database and content before upgrading.
+Image=docker.io/library/ghost:6.75.0-alpine@sha256:bea7100f19d83b23c234fd8ad94a90505552f7b0f5f307b079907c1fd03dbdf7
+ContainerName=ghost
+Network=ghost.network
+Volume=ghost-content.volume:/var/lib/ghost/content:U
+# Preserve X-Forwarded-Proto at the reverse proxy to avoid HTTPS redirect loops.
+PublishPort=127.0.0.1:2368:2368
+EnvironmentFile=%h/.config/ghost/ghost.env
+Environment=NODE_ENV=production server__host=0.0.0.0 server__port=2368
+Environment=database__client=mysql database__connection__host=ghost-db
+Environment=database__connection__database=ghost database__connection__user=ghost
+Environment='logging__transports=["stdout"]'
+# These features need additional services; enable them when those are configured.
+Environment=hostSettings__limits__limitSocialWeb__disabled=true
+Environment=hostSettings__limits__limitAnalytics__disabled=true
+User=1000:1000
+DropCapability=all
+NoNewPrivileges=true
+ReadOnly=true
+ReadOnlyTmpfs=false
+Tmpfs=/tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777
+HttpProxy=false
+PidsLimit=256
+Memory=1g
+Notify=healthy
+HealthCmd=["node", "-e", "const u=new URL(process.env.url);require('http').get({host:'127.0.0.1',port:2368,path:'/',headers:{Host:u.host,'X-Forwarded-Proto':u.protocol.slice(0,-1)}},r=>{r.resume();process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+HealthInterval=30s
+HealthTimeout=5s
+HealthStartPeriod=180s
+HealthRetries=3
+HealthOnFailure=kill
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=300s
+TimeoutStopSec=60s
+
+[Install]
+WantedBy=default.target

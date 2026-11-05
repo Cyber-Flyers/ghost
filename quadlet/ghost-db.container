@@ -1,0 +1,41 @@
+[Unit]
+Description=Ghost MySQL database
+StartLimitIntervalSec=0
+
+[Container]
+# Back up the database and content before upgrading.
+Image=docker.io/library/mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
+ContainerName=ghost-db
+Network=ghost.network
+NetworkAlias=ghost-db
+Volume=ghost-db.volume:/var/lib/mysql:U
+EnvironmentFile=%h/.config/ghost/mysql.env
+Environment=MYSQL_DATABASE=ghost MYSQL_USER=ghost MYSQL_ROOT_HOST=localhost
+User=999:999
+DropCapability=all
+NoNewPrivileges=true
+ReadOnly=true
+ReadOnlyTmpfs=false
+Tmpfs=/tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777
+Tmpfs=/run/mysqld:rw,noexec,nosuid,nodev,size=16m,mode=1777
+HttpProxy=false
+PidsLimit=256
+Memory=1g
+Notify=healthy
+# Wait for authenticated TCP access; the initialization server uses a local socket.
+HealthCmd=["sh", "-ec", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" exec mysql --protocol=TCP --host=127.0.0.1 --user=\"$$MYSQL_USER\" --database=\"$$MYSQL_DATABASE\" --connect-timeout=3 --batch --skip-column-names --execute='SELECT 1' >/dev/null"]
+HealthInterval=15s
+HealthTimeout=5s
+HealthStartPeriod=120s
+HealthRetries=5
+HealthOnFailure=kill
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=300s
+TimeoutStopSec=120s
+
+[Install]
+WantedBy=default.target
